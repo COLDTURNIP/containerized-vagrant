@@ -1,0 +1,38 @@
+#!/bin/bash
+
+set -e
+
+WORKDIR=$(realpath $PWD)
+VAGRANT_CWD=${VAGRANT_CWD:-$WORKDIR}
+VAGRANTLIBVIRT_IMAGE=${VAGRANTLIBVIRT_IMAGE:-'quay.io/raphanuslo/vagrant:latest'}
+VAGRANTLIBVIRT_NETWORK=${VAGRANTLIBVIRT_NETWORK:-'host'}
+
+CONTAINER_EXPORT_ENVS=(
+  LIBVIRT_DEFAULT_URI
+  VAGRANT_VAGRANTFILE
+  VAGRANT_CWD
+)
+CONTAINER_EXPORT_ENVS+=($(env | grep '^VAGRANT_' | cut -d'=' -f1))
+
+CONTAINER_ENV_ARGS=()
+declare -A SEEN
+for ENVVAR in "${CONTAINER_EXPORT_ENVS[@]}"; do
+  SEEN[$ENVVAR]=1
+done
+for ENVVAR in "${!SEEN[@]}"; do
+  CONTAINER_ENV_ARGS+=(-e "${ENVVAR}")
+done
+
+CMD_BIN='docker'
+CMD_ARGS=(
+  run -i --rm \
+  "${CONTAINER_ENV_ARGS[@]}" \
+  -v /var/run/libvirt/:/var/run/libvirt/ \
+  -v ~/.vagrant.d:/.vagrant.d \
+  -v "${VAGRANT_CWD}":"${VAGRANT_CWD}" \
+  -v "${WORKDIR}":"${WORKDIR}" \
+  -w "${WORKDIR}" \
+  --network "${VAGRANTLIBVIRT_NETWORK}" \
+  "${VAGRANTLIBVIRT_IMAGE}" vagrant $@
+)
+"${CMD_BIN}" "${CMD_ARGS[@]}"

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -x
+
+IMAGE_NAME=${IMAGE_NAME:-'quay.io/raphanuslo/vagrant:latest'}
+SRC_ROOT=$(cd $(dirname $0)/.. && pwd)
+
+cd "${SRC_ROOT}"
+
+# Update to latest base images
+grep 'FROM.*/' Containerfile | cut -d' ' -f2 | while read -r BASE_IMAGE
+do
+  docker pull "${BASE_IMAGE}"
+done
+
+docker build -f "${SRC_ROOT}/Containerfile" -t "${IMAGE_NAME}" "${SRC_ROOT}"
