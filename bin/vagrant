@@ -4,11 +4,15 @@ set -e
 
 WORKDIR=$(realpath $PWD)
 VAGRANT_CWD=${VAGRANT_CWD:-$WORKDIR}
-VAGRANTLIBVIRT_IMAGE=${VAGRANTLIBVIRT_IMAGE:-'quay.io/raphanuslo/vagrant:latest'}
+VAGRANTLIBVIRT_IMAGE=${VAGRANTLIBVIRT_IMAGE:-'vagrantlibvirt/vagrant-libvirt:latest'}
 VAGRANTLIBVIRT_NETWORK=${VAGRANTLIBVIRT_NETWORK:-'host'}
+
+export LIBVIRT_DEFAULT_URI=${LIBVIRT_DEFAULT_URI:-qemu:///system}
+export IGNORE_MISSING_LIBVIRT_SOCK=${IGNORE_MISSING_LIBVIRT_SOCK:-1}
 
 CONTAINER_EXPORT_ENVS=(
   LIBVIRT_DEFAULT_URI
+  IGNORE_MISSING_LIBVIRT_SOCK
   VAGRANT_VAGRANTFILE
   VAGRANT_CWD
 )
@@ -23,12 +27,19 @@ for ENVVAR in "${!SEEN[@]}"; do
   CONTAINER_ENV_ARGS+=(-e "${ENVVAR}")
 done
 
+DOCKER_RUN_SHELL_OPT=()
+if [[ -t 0 && -t 1 ]]; then
+  # STDOUT to a terminal, not piped
+  DOCKER_RUN_SHELL_OPT=(-i -t)
+fi
+
 CMD_BIN='docker'
 CMD_ARGS=(
-  run -i --rm \
+  run --rm \
+  "${DOCKER_RUN_SHELL_OPT[@]}" \
   "${CONTAINER_ENV_ARGS[@]}" \
   -v /var/run/libvirt/:/var/run/libvirt/ \
-  -v ~/.vagrant.d:/.vagrant.d \
+  -v "${HOME}/.vagrant.d:/.vagrant.d" \
   -v "${VAGRANT_CWD}":"${VAGRANT_CWD}" \
   -v "${WORKDIR}":"${WORKDIR}" \
   -w "${WORKDIR}" \
